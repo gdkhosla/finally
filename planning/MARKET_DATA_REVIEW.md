@@ -10,17 +10,27 @@
 ## Executive Summary
 
 The market data subsystem is **well-built and ready to integrate** with the rest of
-the platform, with one caveat: a single test (`test_tsla_correlation_is_independent`)
-fails **deterministically** due to a flawed test premise, not an implementation bug.
-The production code faithfully implements the design documents — the interface,
-cache, GBM simulator, Massive poller, factory, and SSE router all match
+the platform. The production code faithfully implements the design documents — the
+interface, cache, GBM simulator, Massive poller, factory, and SSE router all match
 `MARKET_DATA_DESIGN.md` essentially line-for-line.
 
-- **Test results:** 90 passed, 1 failed (the failing test is incorrect; see Issue #1).
+- **Test results:** 91 passed, 0 failed (all green after fixes below).
 - **Spec compliance:** High. All PLAN.md decisions (items 2, 3, 4, 5) are respected.
 - **Architecture:** Clean producer/cache/consumer split; source-agnostic downstream.
-- **Recommendation:** Fix the one bad test, address the minor items below, and the
-  component is good to build on.
+- **Recommendation:** Approved to build on.
+
+### Resolution status (all issues below addressed)
+
+| # | Issue | Status |
+|---|-------|--------|
+| 1 | `test_tsla_correlation_is_independent` asserted raw covariance | ✅ Fixed — now compares Pearson correlation coefficient (normalized), stable 5/5 |
+| 2 | `SimulatorDataSource.start()` read engine private `_prices` | ✅ Fixed — added `GBMSimulator.get_all_prices()`, used in `start()` |
+| 3 | Unknown tickers shared the `DEFAULT_PARAMS` dict object | ✅ Fixed — store a copy via `dict(...)` |
+| 4 | Unused `from time import time` in `models.py` | ✅ Fixed — removed |
+| 5 | No committed lockfile | ✅ Fixed — `uv.lock` committed |
+| — | Missing hatch build target broke `uv run` | ✅ Fixed — added `[tool.hatch.build.targets.wheel] packages = ["app"]` |
+| 6 | `cache.version` read without lock | Accepted as-is (atomic int read under CPython) |
+| 7 | `_run_loop` dead `_engine is None` guard | Accepted as-is (harmless defensiveness) |
 
 ---
 

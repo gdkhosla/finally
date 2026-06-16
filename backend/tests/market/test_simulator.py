@@ -113,11 +113,18 @@ def test_correlated_tickers_positive_covariance():
 
 
 def test_tsla_correlation_is_independent():
-    """TSLA vs AAPL should show lower covariance than intra-tech pairs."""
+    """TSLA (rho=0.3 vs everything) should co-move less tightly with AAPL than
+    a same-sector tech pair (rho=0.6).
+
+    This must compare the *Pearson correlation coefficient*, not raw covariance:
+    covariance of returns is rho * sigma_a * sigma_b, so TSLA's much higher
+    volatility (sigma=0.50) would dominate a raw-covariance comparison even though
+    its correlation is lower. Normalizing by the standard deviations isolates rho.
+    """
     sim_corr = GBMSimulator(["AAPL", "MSFT"], event_probability=0)
     sim_tsla = GBMSimulator(["AAPL", "TSLA"], event_probability=0)
 
-    def get_cov(sim, a, b, steps=2000):
+    def get_correlation(sim, a, b, steps=4000):
         a_rets, b_rets = [], []
         prev = {a: sim.get_price(a), b: sim.get_price(b)}
         for _ in range(steps):
@@ -125,11 +132,18 @@ def test_tsla_correlation_is_independent():
             a_rets.append((prices[a] - prev[a]) / prev[a])
             b_rets.append((prices[b] - prev[b]) / prev[b])
             prev = dict(prices)
-        return sum(x * y for x, y in zip(a_rets, b_rets)) / steps
+        mean_a = sum(a_rets) / len(a_rets)
+        mean_b = sum(b_rets) / len(b_rets)
+        cov = sum((x - mean_a) * (y - mean_b) for x, y in zip(a_rets, b_rets))
+        var_a = sum((x - mean_a) ** 2 for x in a_rets)
+        var_b = sum((y - mean_b) ** 2 for y in b_rets)
+        return cov / math.sqrt(var_a * var_b)
 
-    cov_tech = get_cov(sim_corr, "AAPL", "MSFT")
-    cov_tsla = get_cov(sim_tsla, "AAPL", "TSLA")
-    assert cov_tech > cov_tsla, "Tech-tech covariance should exceed TSLA pair covariance"
+    corr_tech = get_correlation(sim_corr, "AAPL", "MSFT")
+    corr_tsla = get_correlation(sim_tsla, "AAPL", "TSLA")
+    assert corr_tech > corr_tsla, (
+        "Same-sector tech correlation (rho=0.6) should exceed the TSLA pair (rho=0.3)"
+    )
 
 
 def test_price_floor_at_one_cent():

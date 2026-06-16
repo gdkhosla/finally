@@ -94,11 +94,15 @@ class GBMSimulator:
     def get_price(self, ticker: str) -> float | None:
         return self._prices.get(ticker)
 
+    def get_all_prices(self) -> dict[str, float]:
+        """Return a snapshot of all current prices {ticker: price}."""
+        return dict(self._prices)
+
     def get_tickers(self) -> list[str]:
         return list(self._tickers)
 
     def _add_ticker_internal(self, ticker: str) -> None:
-        params = TICKER_PARAMS.get(ticker, DEFAULT_PARAMS)
+        params = dict(TICKER_PARAMS.get(ticker, DEFAULT_PARAMS))
         seed = SEED_PRICES.get(ticker, random.uniform(50.0, 300.0))
         self._tickers.append(ticker)
         self._prices[ticker] = round(seed, 2)
@@ -158,7 +162,7 @@ class SimulatorDataSource(MarketDataSource):
     async def start(self, tickers: list[str]) -> None:
         self._engine = GBMSimulator(tickers, dt=self._dt, event_probability=self._event_prob)
         # Seed the cache immediately so the first SSE connection has data
-        for ticker, price in self._engine._prices.items():
+        for ticker, price in self._engine.get_all_prices().items():
             self._cache.update(ticker, price)
         self._task = asyncio.create_task(self._run_loop(), name="simulator-loop")
 
