@@ -50,23 +50,29 @@ This project is under active development by coding agents.
 - 🚧 **Frontend** — Next.js trading terminal UI
 - 🚧 **Docker, start/stop scripts, and E2E tests**
 
-## Quick Start (Docker)
-
-Once the container build is complete:
+## Quick Start
 
 ```bash
 # Configure
 cp .env.example .env
-# Add your OPENAI_API_KEY to .env
-
-# Build and run
-docker build -t finally .
-docker run -v finally-data:/app/db -p 8000:8000 --env-file .env finally
-
-# Open http://localhost:8000
+# Add your OPENAI_API_KEY to .env (needed for AI chat; simulator works without it)
 ```
 
-The SQLite database persists across restarts via the `finally-data` volume.
+**macOS / Linux:**
+```bash
+./scripts/start_mac.sh        # builds image on first run
+# To force rebuild: ./scripts/start_mac.sh --build
+./scripts/stop_mac.sh
+```
+
+**Windows:**
+```powershell
+.\scripts\start_windows.ps1          # builds image on first run
+# To force rebuild: .\scripts\start_windows.ps1 -Build
+.\scripts\stop_windows.ps1
+```
+
+Open `http://localhost:8000`. Portfolio data persists in the `finally-data` Docker volume across restarts.
 
 ## Local Development
 

@@ -1,0 +1,37 @@
+# E2E stack: the production app container + a Playwright runner.
+# Browser dependencies live only in the playwright image, never in the app image.
+#
+#   docker compose -f test/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
+#
+# The app runs with the price simulator (no MASSIVE_API_KEY) and the mock LLM
+# (LLM_MOCK=true + a dummy OPENAI_API_KEY) so runs are deterministic and offline.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      LLM_MOCK: "true"
+      OPENAI_API_KEY: "test"
+      # No MASSIVE_API_KEY -> built-in simulator streams prices.
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.49.0-noble
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      BASE_URL: "http://app:8000"
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: >
+      sh -c "npm ci && npx playwright test"
